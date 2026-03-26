@@ -1,10 +1,4 @@
-# Python cache
 __pycache__/
 *.pyc
-
-# Virtual environments
-venv/
+data.json
 .env
-
-# OS files
-.DS_Store

@@ -19,7 +19,6 @@ body {
   height: 100%;
 }
 
-/* GLASS */
 .glass {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(20px);
@@ -28,7 +27,6 @@ body {
   border-radius: 16px;
 }
 
-/* HEADER */
 .header {
   display: flex;
   align-items: center;
@@ -60,7 +58,6 @@ body {
   opacity: 0.6;
 }
 
-/* CHAT */
 .chat-container {
   flex: 2;
   display: flex;
@@ -97,7 +94,6 @@ body {
   margin-top: 6px;
 }
 
-/* INPUT */
 .input-bar {
   display: flex;
   padding: 10px;
@@ -122,7 +118,6 @@ button {
   cursor: pointer;
 }
 
-/* DASHBOARD */
 .dashboard {
   flex: 1;
   margin: 20px 20px 20px 0;
@@ -149,7 +144,6 @@ button {
   font-size: 13px;
 }
 
-/* ANIMATION */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -161,7 +155,6 @@ button {
 
 <div class="app">
 
-  <!-- CHAT -->
   <div class="chat-container glass">
 
     <div class="header">
@@ -186,7 +179,6 @@ button {
     </div>
   </div>
 
-  <!-- DASHBOARD -->
   <div class="dashboard glass">
     <div class="card">
       <h3>🧠 State</h3>
@@ -217,6 +209,8 @@ button {
 </div>
 
 <script>
+const API_BASE = "https://honeypot-scam-api-rad4.onrender.com"; // ✅ YOUR LIVE API
+
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 
@@ -273,7 +267,7 @@ async function updateDashboard(conversationId, data) {
   confidenceEl.innerText = data.confidence;
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/api/data/${conversationId}`);
+    const res = await fetch(`${API_BASE}/api/data/${conversationId}`);
     const result = await res.json();
 
     const stored = result.collected_data || {};
@@ -309,7 +303,7 @@ async function sendMessage() {
   showTyping();
 
   try {
-    const res = await fetch("http://127.0.0.1:8000/api/full", {
+    const res = await fetch(`${API_BASE}/api/full`, {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
@@ -328,7 +322,6 @@ async function sendMessage() {
       `state: ${data.persona_state} | confidence: ${data.confidence}`
     );
 
-    // ✅ FIX: delay to avoid race condition
     setTimeout(() => {
       updateDashboard(conversationId, data);
     }, 150);
