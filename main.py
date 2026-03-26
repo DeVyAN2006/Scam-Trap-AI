@@ -1,8 +1,9 @@
 import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
-# Optional: keep your logic import (safe)
+# Import logic safely
 try:
     import logic
 except Exception:
@@ -11,10 +12,21 @@ except Exception:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Evaluator Safe Honeypot API")
+app = FastAPI(title="Honeypot API")
 
 # -------------------------------------------------
-# Helper: the ONLY response format allowed
+# 🔥 CORS FIX (IMPORTANT)
+# -------------------------------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# -------------------------------------------------
+# Helper response
 # -------------------------------------------------
 def evaluator_response(reply: str):
     return {
@@ -23,68 +35,93 @@ def evaluator_response(reply: str):
     }
 
 # -------------------------------------------------
-# Root & Health (judge / uptime safe)
+# Root & Health
 # -------------------------------------------------
-
 @app.get("/")
-@app.post("/")
 def root():
-    return evaluator_response("Honeypot API is running.")
+    return evaluator_response("Honeypot API running")
 
 @app.get("/health")
-@app.head("/health")
 def health():
     return evaluator_response("OK")
 
 # -------------------------------------------------
-# Main evaluator endpoint
+# Evaluator-safe endpoint
 # -------------------------------------------------
-
 @app.post("/api/honeypot")
 async def honeypot_handler(request: Request):
     try:
         data = await request.json()
 
-        # ✅ Flexible input handling (fix)
-        text = ""
-        if isinstance(data, dict):
-            if isinstance(data.get("message"), dict):
-                text = data.get("message", {}).get("text", "")
-            elif isinstance(data.get("message"), str):
-                text = data.get("message")
-            elif "text" in data:
-                text = data.get("text", "")
-
-        text = str(text).strip()
+        text = str(data.get("message", "")).strip()
 
         if not text:
-            return evaluator_response("Invalid input received.")
+            return evaluator_response("Invalid input")
 
-        # Optional internal logic (hidden from evaluator)
         if logic:
-            try:
-                # ✅ Use your improved deterministic reply
-                reply = logic.generate_agent_reply(text)
-            except Exception as e:
-                logger.error(f"Logic error on input [{text}]: {e}")
-                reply = "Message processed safely."
-        else:
-            reply = "Message processed safely."
+            return evaluator_response(logic.generate_agent_reply(text))
 
-        return evaluator_response(reply)
+        return evaluator_response("Logic not available")
 
     except Exception as e:
-        logger.error(f"Unhandled error: {e}")
-        return evaluator_response("Invalid input received.")
+        logger.error(f"Error in /api/honeypot: {e}")
+        return evaluator_response("Error")
 
 # -------------------------------------------------
-# Global fallback (absolute safety net)
+# 🔥 Full honeypot endpoint
 # -------------------------------------------------
+@app.post("/api/full")
+async def honeypot_full(request: Request):
+    try:
+        data = await request.json()
 
+        # ✅ SAFE extraction
+        conversation_id = str(data.get("conversation_id", "")).strip()
+        text = str(data.get("message", "")).strip()
+
+        # 🔥 REQUIRED FIX: ensure stable ID
+        if not conversation_id:
+            conversation_id = "default"
+
+        if not text:
+            return evaluator_response("Invalid input")
+
+        if logic:
+            return logic.honeypot_response(conversation_id, text)
+
+        return evaluator_response("Logic not available")
+
+    except Exception as e:
+        logger.error(f"Error in /api/full: {e}")
+        return evaluator_response("Error")
+
+# -------------------------------------------------
+# Data retrieval endpoint
+# -------------------------------------------------
+@app.get("/api/data/{conversation_id}")
+async def get_data(conversation_id: str):
+    try:
+        conversation_id = str(conversation_id).strip()
+
+        if logic:
+            return {
+                "conversation_id": conversation_id,
+                "collected_data": logic.get_conversation_data(conversation_id)
+            }
+
+        return {"error": "Logic not available"}
+
+    except Exception as e:
+        logger.error(f"Error in /api/data: {e}")
+        return {"error": "Something went wrong"}
+
+# -------------------------------------------------
+# Global fallback
+# -------------------------------------------------
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Global exception: {exc}")
     return JSONResponse(
         status_code=200,
-        content=evaluator_response("Invalid input received.")
+        content=evaluator_response("Error")
     )
